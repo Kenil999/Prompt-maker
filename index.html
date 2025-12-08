@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Refiner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #0f0f1a 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            font-size: 2rem;
+            background: linear-gradient(90deg, #00d9ff, #00ff88, #00d9ff);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient 3s ease infinite;
+        }
+        
+        @keyframes gradient {
+            0% { background-position: 0% center; }
+            50% { background-position: 100% center; }
+            100% { background-position: 0% center; }
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+        
+        .screen {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .screen.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 20px;
+            padding: 28px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+            backdrop-filter: blur(10px);
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 12px;
+            color: #00d9ff;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 18px;
+            border-radius: 14px;
+            border: 2px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.4);
+            color: #fff;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 140px;
+            margin-bottom: 18px;
+            transition: all 0.3s ease;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #00d9ff;
+            box-shadow: 0 0 20px rgba(0,217,255,0.2);
+        }
+        
+        textarea::placeholder {
+            color: #555;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 18px;
+            border-radius: 14px;
+            border: 2px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.4);
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #00d9ff;
+            box-shadow: 0 0 20px rgba(0,217,255,0.2);
+        }
+        
+        input[type="text"]::placeholder {
+            color: #555;
+        }
+        
+        button {
+            width: 100%;
+            padding: 18px 28px;
+            border-radius: 14px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            color: #000;
+            box-shadow: 0 4px 20px rgba(0,217,255,0.3);
+        }
+        
+        .btn-primary:hover {
+            box-shadow: 0 6px 30px rgba(0,217,255,0.5);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.08);
+            color: #aaa;
+            margin-top: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+        }
+        
+        .btn-final {
+            background: linear-gradient(135deg, #ff6b6b, #ffa502);
+            color: #fff;
+            font-size: 18px;
+            padding: 22px;
+            margin-top: 20px;
+            box-shadow: 0 4px 20px rgba(255,107,107,0.3);
+        }
+        
+        .chat-container {
+            max-height: 350px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding-right: 5px;
+        }
+        
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-container::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+        
+        .message {
+            padding: 18px;
+            border-radius: 16px;
+            margin-bottom: 14px;
+            line-height: 1.6;
+            animation: messageIn 0.3s ease;
+        }
+        
+        @keyframes messageIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.ai {
+            background: linear-gradient(135deg, rgba(0,217,255,0.1), rgba(0,255,136,0.05));
+            border-left: 4px solid #00d9ff;
+        }
+        
+        .message.user {
+            background: rgba(255,255,255,0.05);
+            border-left: 4px solid #00ff88;
+        }
+        
+        .final-prompt {
+            background: rgba(0,0,0,0.5);
+            padding: 24px;
+            border-radius: 16px;
+            white-space: pre-wrap;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            line-height: 1.7;
+            max-height: 450px;
+            overflow-y: auto;
+            border: 1px solid rgba(0,217,255,0.2);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 24px;
+            color: #00d9ff;
+        }
+        
+        .loading-dots {
+            display: inline-flex;
+            gap: 6px;
+        }
+        
+        .loading-dots span {
+            width: 10px;
+            height: 10px;
+            background: #00d9ff;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+        
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .step {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.08);
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .step.active {
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            color: #000;
+            box-shadow: 0 0 20px rgba(0,217,255,0.4);
+        }
+        
+        .step.completed {
+            background: #00ff88;
+            color: #000;
+        }
+        
+        .step-line {
+            width: 50px;
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+        }
+        
+        .step-line.completed {
+            background: linear-gradient(90deg, #00ff88, #00d9ff);
+        }
+        
+        .success-toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #00ff88, #00d9ff);
+            color: #000;
+            padding: 16px 28px;
+            border-radius: 30px;
+            font-weight: 600;
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 1.7s forwards;
+            z-index: 1000;
+        }
+        
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        
+        @keyframes toastOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✨ Prompt Refiner</h1>
+        <p class="subtitle">Transform messy prompts into powerful AI instructions</p>
+        
+        <div class="step-indicator">
+            <div class="step active" id="step1">1</div>
+            <div class="step-line" id="line1"></div>
+            <div class="step" id="step2">2</div>
+            <div class="step-line" id="line2"></div>
+            <div class="step" id="step3">3</div>
+        </div>
+        
+        <!-- Screen 1: Raw Input -->
+        <div class="screen active" id="screen1">
+            <div class="card">
+                <label>📝 Enter Your Raw Prompt</label>
+                <textarea 
+                    id="rawPrompt" 
+                    placeholder="Example: Write me something about AI for my blog...
+
+Just type naturally — we'll help you refine it into a powerful prompt!"
+                ></textarea>
+                <button class="btn-primary" onclick="startRefining()">
+                    Refine My Prompt ✨
+                </button>
+            </div>
+        </div>
+        
+        <!-- Screen 2: Clarification Chat -->
+        <div class="screen" id="screen2">
+            <div class="card">
+                <label>💬 Let's Clarify Your Needs</label>
+                <div class="chat-container" id="chatContainer"></div>
+                
+                <div id="loadingIndicator" class="loading hidden">
+                    <div class="loading-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <p style="margin-top: 10px; font-size: 14px;">AI is thinking...</p>
+                </div>
+                
+                <div id="inputArea">
+                    <input 
+                        type="text" 
+                        id="userAnswer" 
+                        placeholder="Type your answer here..."
+                    >
+                    <button class="btn-primary" onclick="sendAnswer()">
+                        Send Answer
+                    </button>
+                </div>
+                
+                <button class="btn-final hidden" id="generateBtn" onclick="generateFinal()">
+                    🚀 Generate Final Prompt
+                </button>
+                
+                <button class="btn-secondary" onclick="startOver()">
+                    ← Start Over
+                </button>
+            </div>
+        </div>
+        
+        <!-- Screen 3: Final Output -->
+        <div class="screen" id="screen3">
+            <div class="card">
+                <label>🎯 Your Optimized Prompt</label>
+                <div class="final-prompt" id="finalPrompt"></div>
+                <button class="btn-primary" onclick="copyPrompt()" style="margin-top: 20px;">
+                    📋 Copy to Clipboard
+                </button>
+                <button class="btn-secondary" onclick="startOver()">
+                    ✨ Refine Another Prompt
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Conversation state stored in browser
+        let conversationMessages = [];
+        
+        function showScreen(num) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen' + num).classList.add('active');
+            
+            // Update step indicators
+            for (let i = 1; i <= 3; i++) {
+                const step = document.getElementById('step' + i);
+                const line = document.getElementById('line' + (i - 1));
+                
+                step.classList.remove('active', 'completed');
+                if (i < num) {
+                    step.classList.add('completed');
+                    if (line) line.classList.add('completed');
+                }
+                if (i === num) step.classList.add('active');
+                if (i >= num && line) line.classList.remove('completed');
+            }
+        }
+        
+        function addMessage(text, isAI) {
+            const container = document.getElementById('chatContainer');
+            const div = document.createElement('div');
+            div.className = 'message ' + (isAI ? 'ai' : 'user');
+            div.textContent = text;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loadingIndicator').classList.toggle('hidden', !show);
+            document.getElementById('inputArea').classList.toggle('hidden', show);
+        }
+        
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'success-toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+        
+        async function startRefining() {
+            const rawPrompt = document.getElementById('rawPrompt').value.trim();
+            if (!rawPrompt) {
+                alert('Please enter a prompt first!');
+                return;
+            }
+            
+            showScreen(2);
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: rawPrompt })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                showLoading(false);
+                conversationMessages = data.messages;
+                addMessage(data.response, true);
+                
+                if (data.ready_for_final) {
+                    document.getElementById('generateBtn').classList.remove('hidden');
+                    document.getElementById('inputArea').classList.add('hidden');
+                }
+            } catch (error) {
+                showLoading(false);
+                addMessage('Error: ' + error.message + '. Please try again.', true);
+            }
+        }
+        
+        async function sendAnswer() {
+            const answer = document.getElementById('userAnswer').value.trim();
+            if (!answer) return;
+            
+            addMessage(answer, false);
+            document.getElementById('userAnswer').value = '';
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        messages: conversationMessages,
+                        userMessage: answer 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                showLoading(false);
+                conversationMessages = data.messages;
+                addMessage(data.response, true);
+                
+                if (data.ready_for_final) {
+                    document.getElementById('generateBtn').classList.remove('hidden');
+                    document.getElementById('inputArea').classList.add('hidden');
+                }
+            } catch (error) {
+                showLoading(false);
+                addMessage('Error: ' + error.message, true);
+            }
+        }
+        
+        async function generateFinal() {
+            showScreen(3);
+            document.getElementById('finalPrompt').innerHTML = 
+                '<div class="loading"><div class="loading-dots"><span></span><span></span><span></span></div><p style="margin-top:10px">Generating your optimized prompt...</p></div>';
+            
+            try {
+                const response = await fetch('/api/final', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages: conversationMessages })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                document.getElementById('finalPrompt').textContent = data.final_prompt;
+            } catch (error) {
+                document.getElementById('finalPrompt').textContent = 
+                    'Error generating prompt: ' + error.message;
+            }
+        }
+        
+        function copyPrompt() {
+            const text = document.getElementById('finalPrompt').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('✓ Copied to clipboard!');
+            }).catch(() => {
+                // Fallback for mobile
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast('✓ Copied to clipboard!');
+            });
+        }
+        
+        function startOver() {
+            conversationMessages = [];
+            document.getElementById('rawPrompt').value = '';
+            document.getElementById('chatContainer').innerHTML = '';
+            document.getElementById('userAnswer').value = '';
+            document.getElementById('generateBtn').classList.add('hidden');
+            document.getElementById('inputArea').classList.remove('hidden');
+            showScreen(1);
+        }
+        
+        // Enter key to send
+        document.getElementById('userAnswer').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendAnswer();
+        });
+        
+        document.getElementById('rawPrompt').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) startRefining();
+        });
+    </script>
+</body>
+</html>
