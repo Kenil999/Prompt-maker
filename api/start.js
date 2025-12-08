@@ -1,18 +1,8 @@
-export default async function handler(req, res) {
-    // Enable CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-    
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+export const config = {
+    runtime: 'edge'
+};
 
-    const SYSTEM_PROMPT = `You are a Prompt-Refinement Engine.
+const SYSTEM_PROMPT = `You are a Prompt-Refinement Engine.
 
 Your job is to turn messy user input into a perfect, high-performance AI prompt.
 
@@ -35,9 +25,22 @@ Optimization Instruction:
 
 The final output must be explicit, unambiguous, and understood by any large language model.`;
 
+export default async function handler(req) {
+    if (req.method === 'OPTIONS') {
+        return new Response(null, {
+            status: 200,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            }
+        });
+    }
+
     try {
-        const { prompt } = req.body;
-        
+        const body = await req.json();
+        const { prompt } = body;
+
         const messages = [
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: `Here is my raw prompt that needs refinement:\n\n${prompt}` }
@@ -47,7 +50,9 @@ The final output must be explicit, unambiguous, and understood by any large lang
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://prompt-refiner.vercel.app",
+                "X-Title": "Prompt Refiner"
             },
             body: JSON.stringify({
                 model: "deepseek/deepseek-chat-v3-0324:free",
@@ -56,21 +61,43 @@ The final output must be explicit, unambiguous, and understood by any large lang
         });
 
         const data = await response.json();
+        
+        if (data.error) {
+            return new Response(JSON.stringify({ error: data.error.message }), {
+                status: 400,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+        }
+
         const assistantMessage = data.choices[0].message.content;
 
-        // Return messages array for client to store
         const updatedMessages = [
             ...messages,
             { role: "assistant", content: assistantMessage }
         ];
 
-        return res.status(200).json({
+        return new Response(JSON.stringify({
             response: assistantMessage,
             messages: updatedMessages,
             ready_for_final: assistantMessage.includes("I have enough information")
+        }), {
+            status: 200,
+            headers: { 
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            }
         });
 
     } catch (error) {
-        return res.status(500).json({ error: error.message });
+        return new Response(JSON.stringify({ error: error.message }), {
+            status: 500,
+            headers: { 
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            }
+        });
     }
 }
